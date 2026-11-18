@@ -1,0 +1,14 @@
+{
+  "name": "小蜜 · 智能客服 Agent",
+  "short_name": "小蜜客服",
+  "description": "智能客服助手：多轮对话、FAQ 检索、意图识别、自动转人工",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#F7F8FA",
+  "theme_color": "#18181B",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}

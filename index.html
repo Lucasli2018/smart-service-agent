@@ -4,6 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>小蜜 · 智能客服 Agent</title>
+<link rel="icon" type="image/svg+xml" href="/icon.svg">
+<link rel="apple-touch-icon" href="/icon.svg">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#18181B">
+<meta name="description" content="小蜜智能客服：多轮对话、FAQ 检索、意图识别、自动转人工">
 <style>
 :root{
   --bg:#F7F8FA; --surface:#FFFFFF; --surface-2:#FAFBFC;
@@ -279,7 +284,9 @@ button{cursor:pointer;border:none;background:none;color:inherit}
 <!-- ========== 管理视图 ========== -->
 <div class="view" id="view-admin">
   <div class="admin"><div class="admin-inner">
-    <div class="page-h"><div><h2>数据概览</h2><div class="sub">客服运营实时统计 · 数据存储于云端</div></div></div>
+    <div class="page-h"><div><h2>数据概览</h2><div class="sub">客服运营实时统计 · 数据存储于云端</div></div>
+      <button class="mini-btn" id="btnExport"><span class="ic-slot" data-ico="download"></span>导出 CSV</button>
+    </div>
     <div class="stat-grid" id="statGrid"><div class="loading">加载中…</div></div>
     <div class="panel">
       <h3><span class="ic-slot" data-ico="trend"></span>会话趋势 <span class="hint">近 14 天</span></h3>
@@ -305,6 +312,13 @@ button{cursor:pointer;border:none;background:none;color:inherit}
     </div>
     <div class="panel">
       <h3><span class="ic-slot" data-ico="book"></span>FAQ 知识库 <span class="hint">命中记录由对话自动累计</span></h3>
+      <div class="filter-chips" id="faqFilter">
+        <button class="chip on" data-cat="">全部</button>
+        <button class="chip" data-cat="refund">退款</button>
+        <button class="chip" data-cat="order">订单</button>
+        <button class="chip" data-cat="tech">技术</button>
+        <button class="chip" data-cat="general">通用</button>
+      </div>
       <div class="faq-toolbar">
         <input id="faqQ" placeholder="问题" style="flex:2;min-width:170px">
         <input id="faqA" placeholder="答案" style="flex:3;min-width:200px">
@@ -368,6 +382,7 @@ const ICONS={
   arrow:'<polyline points="9 18 15 12 9 6"/>',
   check:'<path d="M20 6L9 17l-5-5"/>',
   inbox:'<polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>',
+  download:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>',
 };
 function ico(n,cls=''){return `<svg class="ic ${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n]||''}</svg>`}
 function starSvg(on){return `<svg class="ic" viewBox="0 0 24 24" fill="${on?'currentColor':'none'}" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round">${ICONS.star}</svg>`}
@@ -385,7 +400,7 @@ const API="/api";
 const S={
   visitor:localStorage.getItem("csa_visitor")||(()=>{const v="v_"+Math.random().toString(36).slice(2)+Date.now().toString(36);localStorage.setItem("csa_visitor",v);return v})(),
   convId:null,conversations:[],messages:[],rating:null,sending:false,
-  adminStatus:"",editingFaq:null,
+  adminStatus:"",editingFaq:null,faqCat:"",
 };
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const fmt=ts=>{if(!ts)return"";const d=new Date(ts);return`${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`};
@@ -568,20 +583,29 @@ async function openDetail(id){
 }
 
 /* ============ FAQ 管理 ============ */
+let allFaqs=[];
+function renderFaqList(){
+  const cat=S.faqCat||"";
+  const list=allFaqs.filter(f=>!cat||f.category===cat);
+  $("faqList").innerHTML=list.length?list.map(f=>`<div class="faq-item" data-faq="${f.id}">
+    <div class="fbody"><div class="fq"><span class="pill">${catName(f.category)}</span>${esc(f.question)}<span class="hits">命中 ${f.hits||0} 次</span></div><div class="fa">${esc(f.answer)}</div></div>
+    <div class="fa-actions"><button class="icon-btn" data-edit="${f.id}">${ico("edit")}编辑</button><button class="icon-btn del" data-del="${f.id}">${ico("trash")}删除</button></div>
+  </div>`).join(""):'<div class="empty">'+ico("book")+(allFaqs.length?'该分类暂无 FAQ':'暂无 FAQ')+'</div>';
+  document.querySelectorAll("[data-del]").forEach(el=>el.onclick=async()=>{
+    if(!confirm("确定删除这条 FAQ？"))return;
+    try{await api("/admin/faq/"+el.dataset.del,{method:"DELETE"});toast("已删除");loadFaqs()}catch(e){toast(e.message)}
+  });
+  document.querySelectorAll("[data-edit]").forEach(el=>el.onclick=()=>openFaqEdit(el.dataset.edit));
+}
 async function loadFaqs(){
   try{
-    const j=await api("/faqs");
-    $("faqList").innerHTML=j.faqs.length?j.faqs.map(f=>`<div class="faq-item" data-faq="${f.id}">
-      <div class="fbody"><div class="fq"><span class="pill">${catName(f.category)}</span>${esc(f.question)}<span class="hits">命中 ${f.hits||0} 次</span></div><div class="fa">${esc(f.answer)}</div></div>
-      <div class="fa-actions"><button class="icon-btn" data-edit="${f.id}">${ico("edit")}编辑</button><button class="icon-btn del" data-del="${f.id}">${ico("trash")}删除</button></div>
-    </div>`).join(""):'<div class="empty">'+ico("book")+'暂无 FAQ</div>';
-    document.querySelectorAll("[data-del]").forEach(el=>el.onclick=async()=>{
-      if(!confirm("确定删除这条 FAQ？"))return;
-      try{await api("/admin/faq/"+el.dataset.del,{method:"DELETE"});toast("已删除");loadFaqs()}catch(e){toast(e.message)}
-    });
-    document.querySelectorAll("[data-edit]").forEach(el=>el.onclick=()=>openFaqEdit(el.dataset.edit));
+    const j=await api("/faqs");allFaqs=j.faqs;renderFaqList();
   }catch(e){$("faqList").innerHTML='<div class="empty">加载失败</div>'}
 }
+document.querySelectorAll("#faqFilter .chip").forEach(c=>c.onclick=()=>{
+  document.querySelectorAll("#faqFilter .chip").forEach(x=>x.classList.remove("on"));
+  c.classList.add("on");S.faqCat=c.dataset.cat;renderFaqList();
+});
 $("faqAdd").onclick=async()=>{
   const q=$("faqQ").value.trim(),a=$("faqA").value.trim(),c=$("faqCat").value;
   if(!q||!a)return toast("请填写问题和答案");
@@ -611,12 +635,34 @@ $("faqSave").onclick=async()=>{
   }catch(e){toast(e.message)}
 };
 
+/* ============ 导出 CSV ============ */
+$("btnExport").onclick=async()=>{
+  try{
+    const j=await api("/admin/conversations?limit=1000");
+    if(!j.conversations.length)return toast("暂无对话记录可导出");
+    const q=s=>`"${String(s??"").replace(/"/g,'""')}"`;
+    const rows=[["会话ID","标题","访客","意图","消息数","状态","评分","更新时间"].map(q).join(",")];
+    for(const c of j.conversations){
+      rows.push([c.id,c.title,c.visitor,intentName(c.intent),c.msg_count,
+        {open:"进行中",transferred:"已转人工",closed:"已关闭"}[c.status]||c.status,
+        c.score||"",new Date(c.updated).toLocaleString("zh-CN")].map(q).join(","));
+    }
+    const blob=new Blob(["\uFEFF"+rows.join("\r\n")],{type:"text/csv;charset=utf-8"});
+    const url=URL.createObjectURL(blob),a=document.createElement("a");
+    a.href=url;a.download=`客服对话记录_${new Date().toISOString().slice(0,10)}.csv`;
+    document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
+    toast(`已导出 ${j.conversations.length} 条会话`);
+  }catch(e){toast("导出失败："+e.message)}
+};
+
 /* ============ 弹框关闭 ============ */
 document.querySelectorAll("[data-close]").forEach(el=>{el.innerHTML=ico("x");el.onclick=()=>el.closest(".mask").classList.remove("on")});
 document.querySelectorAll(".mask").forEach(m=>m.onclick=e=>{if(e.target===m)m.classList.remove("on")});
 
 /* ============ 启动 ============ */
 loadConversations();
+// 注册 PWA Service Worker（离线可访问外壳，API 永不缓存）
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("/sw.js").catch(()=>{}))}
 </script>
 </body>
 </html>

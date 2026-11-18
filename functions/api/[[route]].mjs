@@ -88,6 +88,12 @@ export async function onRequest(context) {
     await env.DB.prepare("INSERT INTO cs_messages (id,conv_id,role,content,intent,source,faq_id,created) VALUES (?1,?2,'user',?3,?4,'',?5,?6)")
       .bind(uid(), cid, text, intent.intent, hit ? hit.faq.id : "", t).run();
 
+    // 首条用户消息自动生成会话标题（替换默认「新咨询」，便于历史辨认）
+    if (turns === 0 && (!conv.title || conv.title === "新咨询")) {
+      const autoTitle = text.replace(/\s+/g, " ").slice(0, 24) + (text.length > 24 ? "…" : "");
+      await env.DB.prepare("UPDATE cs_conversations SET title=?1 WHERE id=?2").bind(autoTitle, cid).run();
+    }
+
     let reply, source;
     if (humanReason) {
       reply = `已为您转接人工客服（触发原因：${humanReason}）。人工服务时间 9:00-21:00，专员将尽快接入，请稍候～ 您也可以继续留言，我们会一并转交。`;

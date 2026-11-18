@@ -35,6 +35,11 @@ const DB = {
 };
 const PORT = parseInt(process.argv[2], 10) || 8787;
 const indexHtml = readFileSync(new URL("../index.html", import.meta.url), "utf8");
+const STATIC = {
+  "/icon.svg": ["image/svg+xml", readFileSync(new URL("../icon.svg", import.meta.url), "utf8")],
+  "/manifest.webmanifest": ["application/manifest+json", readFileSync(new URL("../manifest.webmanifest", import.meta.url), "utf8")],
+  "/sw.js": ["application/javascript", readFileSync(new URL("../sw.js", import.meta.url), "utf8")],
+};
 http.createServer(async (req, res) => {
   const url = new URL(req.url, "http://x");
   if (url.pathname.startsWith("/api/")) {
@@ -49,6 +54,9 @@ http.createServer(async (req, res) => {
       res.writeHead(resp.status, { "Content-Type": "application/json" });
       res.end(await resp.text());
     } catch (e) { res.writeHead(500); res.end(JSON.stringify({ ok: false, error: e.message })); }
+  } else if (STATIC[url.pathname]) {
+    res.writeHead(200, { "Content-Type": STATIC[url.pathname][0] });
+    res.end(STATIC[url.pathname][1]);
   } else {
     res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
     res.end(indexHtml);

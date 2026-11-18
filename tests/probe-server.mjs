@@ -29,5 +29,8 @@ http.createServer(async (req, res) => {
     const fakeReq = new Request("http://x" + req.url, { method: req.method, headers: { "Content-Type": "application/json" }, body: ["POST", "PUT", "PATCH"].includes(req.method) ? (body || "{}") : undefined });
     try { const resp = await onRequest({ request: fakeReq, env: { DB, LLM_PROVIDER: "" } }); res.writeHead(resp.status, { "Content-Type": "application/json" }); res.end(await resp.text()); }
     catch (e) { res.writeHead(500); res.end(JSON.stringify({ ok: false, error: e.message })); }
-  } else { res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" }); res.end(html); }
+  } else if (url.pathname === "/icon.svg") { res.writeHead(200, { "Content-Type": "image/svg+xml" }); res.end(readFileSync(new URL("../icon.svg", import.meta.url), "utf8")); }
+  else if (url.pathname === "/manifest.webmanifest") { res.writeHead(200, { "Content-Type": "application/manifest+json" }); res.end(readFileSync(new URL("../manifest.webmanifest", import.meta.url), "utf8")); }
+  else if (url.pathname === "/sw.js") { res.writeHead(200, { "Content-Type": "application/javascript" }); res.end(readFileSync(new URL("../sw.js", import.meta.url), "utf8")); }
+  else { res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" }); res.end(html); }
 }).listen(8791, () => console.log("probe server on 8791"));
