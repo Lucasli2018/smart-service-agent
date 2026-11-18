@@ -47,3 +47,11 @@ CREATE TABLE IF NOT EXISTS cs_ratings (
   created INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS cs_idx_rating_conv ON cs_ratings (conv_id);
+
+/* 系统配置（key-value）：大模型供应商 / 密钥 / 模型 / 提示词 / 欢迎语
+   key-value 结构避免后续新增配置项反复 ALTER 存量库 */
+CREATE TABLE IF NOT EXISTS cs_settings (
+  key TEXT PRIMARY KEY,
+  value TEXT DEFAULT '',
+  updated INTEGER NOT NULL
+);

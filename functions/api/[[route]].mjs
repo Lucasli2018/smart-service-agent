@@ -1,10 +1,33 @@
 /* 智能客服 Agent · API 路由（Cloudflare Pages Functions，D1 绑定名 DB）
    访客端：新会话 / 发消息（多轮）/ 历史 / 评价 / 转人工
    坐席端：待接入队列 / 接入 / 人工回复 / 结束会话
-   管理端：对话记录 / 满意度统计 / FAQ 增删改 */
+   管理端：对话记录 / 满意度统计 / FAQ 增删改 / 大模型配置 */
 import {
-  json, bad, now, uid, detectIntent, searchFaq, needHuman, callLLM, systemPrompt
+  json, bad, now, uid, detectIntent, searchFaq, needHuman, callLLM, systemPrompt,
+  llmConfig, LLM_PRESETS, maskSecret, DEFAULT_SYSTEM_PROMPT
 } from "../_lib/core.mjs";
+
+// 读取 D1 中的模型配置（key→value）；表不存在时静默降级为空配置
+async function loadSettings(env) {
+  try {
+    const r = await env.DB.prepare("SELECT key,value FROM cs_settings").all();
+    const o = {};
+    for (const row of r.results) o[row.key] = row.value;
+    return o;
+  } catch (e) { return {}; }
+}
+// 后台展示用的配置（API Key 脱敏）
+function publicSettings(s) {
+  return {
+    llm_provider: s.llm_provider || "mock",
+    llm_base_url: s.llm_base_url || "",
+    llm_model: s.llm_model || "",
+    llm_api_key: maskSecret(s.llm_api_key || ""),
+    llm_temperature: s.llm_temperature || "0.7",
+    llm_system_prompt: s.llm_system_prompt || "",
+    greeting: s.greeting || "",
+  };
+}
 
 export async function onRequest(context) {
   const { request, env } = context;
@@ -12,7 +35,10 @@ export async function onRequest(context) {
   let path = url.pathname.replace(/^\/api\/?/, "").replace(/\/$/, "");
   const method = request.method;
   if (!env.DB) return bad("D1 未绑定（需在 Pages 配置名为 DB 的 D1 绑定）", 500);
-  if (path === "ping") return json({ ok: true, ts: now(), llm: env.LLM_PROVIDER || "mock" });
+  if (path === "ping") {
+    const s = await loadSettings(env);
+    return json({ ok: true, ts: now(), llm: s.llm_provider || env.LLM_PROVIDER || "mock" });
+  }
 
   let body = {};
   if (["POST", "PUT", "PATCH"].includes(method)) {
@@ -168,12 +194,14 @@ export async function onRequest(context) {
       source = "transfer";
       await env.DB.prepare("UPDATE cs_conversations SET status='transferred',intent=?1,updated=?2 WHERE id=?3").bind(intent.intent, t + 1, cid).run();
     } else {
-      // 组装 LLM 消息
-      const llmMessages = [{ role: "system", content: systemPrompt(hit ? `Q:${hit.faq.question}\nA:${hit.faq.answer}` : "") }];
+      // 组装 LLM 消息（系统提示词支持后台自定义）
+      const settings = await loadSettings(env);
+      const llmMessages = [{ role: "system", content: systemPrompt(hit ? `Q:${hit.faq.question}\nA:${hit.faq.answer}` : "", settings.llm_system_prompt) }];
       for (const m of hist.results.slice(-10)) llmMessages.push({ role: m.role === "agent" ? "assistant" : "user", content: m.content });
       llmMessages.push({ role: "user", content: text });
-      reply = await callLLM(llmMessages, env, { intent, faqAnswer: hit ? hit.faq.answer : "" });
-      source = hit ? "faq" : (env.LLM_PROVIDER ? "llm" : "mock");
+      const llmCtx = { intent, faqAnswer: hit ? hit.faq.answer : "", settings };
+      reply = await callLLM(llmMessages, env, llmCtx);
+      source = llmCtx.llmUsed ? "llm" : (hit ? "faq" : "mock");
       await env.DB.prepare("UPDATE cs_conversations SET intent=?1,updated=?2 WHERE id=?3").bind(intent.intent, t + 1, cid).run();
     }
 
@@ -256,6 +284,54 @@ export async function onRequest(context) {
     const id = path.split("/")[2];
     await env.DB.prepare("DELETE FROM cs_faqs WHERE id=?1").bind(id).run();
     return json({ ok: true });
+  }
+
+  /* ================= 大模型配置 API ================= */
+  // 读取配置（Key 脱敏）+ 供应商预设，供后台渲染
+  if (path === "admin/settings" && method === "GET") {
+    const s = await loadSettings(env);
+    return json({ ok: true, settings: publicSettings(s), presets: LLM_PRESETS, defaultPrompt: DEFAULT_SYSTEM_PROMPT });
+  }
+  // 保存配置（白名单字段；脱敏占位符不覆盖真实 Key）
+  if (path === "admin/settings" && method === "POST") {
+    const allowed = ["llm_provider", "llm_base_url", "llm_model", "llm_api_key", "llm_temperature", "llm_system_prompt", "greeting"];
+    const t = now();
+    const old = await loadSettings(env);
+    for (const k of allowed) {
+      if (body[k] === undefined) continue;
+      let v = String(body[k]).slice(0, 8000);
+      // 前端传回的是脱敏串（含 ****）或留空 → 保留原 Key
+      if (k === "llm_api_key" && (v.includes("****") || v === "")) {
+        if (v === "") continue; // 用户显式清空需传 __CLEAR__
+        v = old.llm_api_key || "";
+      }
+      if (k === "llm_api_key" && v === "__CLEAR__") v = "";
+      await env.DB.prepare("INSERT INTO cs_settings (key,value,updated) VALUES (?1,?2,?3) ON CONFLICT(key) DO UPDATE SET value=?2,updated=?3")
+        .bind(k, v, t).run();
+    }
+    return json({ ok: true });
+  }
+  // 连通性测试：用当前配置真实调用一次，不落库
+  if (path === "admin/settings/test" && method === "POST") {
+    const s = await loadSettings(env);
+    // 允许测试时临时传入新 Key/Base（未保存也能测）
+    if (body.llm_provider) s.llm_provider = body.llm_provider;
+    if (body.llm_base_url) s.llm_base_url = body.llm_base_url;
+    if (body.llm_model) s.llm_model = body.llm_model;
+    if (body.llm_temperature !== undefined) s.llm_temperature = body.llm_temperature;
+    if (body.llm_api_key && !body.llm_api_key.includes("****")) s.llm_api_key = body.llm_api_key;
+    const cfg = llmConfig(s, env);
+    const ctx = { settings: s };
+    const messages = [
+      { role: "system", content: systemPrompt("", s.llm_system_prompt) },
+      { role: "user", content: "请只回复：连接成功，我是小蜜。" },
+    ];
+    const started = Date.now();
+    const reply = await callLLM(messages, env, ctx);
+    return json({
+      ok: true, reply, used: !!ctx.llmUsed, provider: cfg.provider, model: ctx.llmModel,
+      error: ctx.llmError || "", elapsed: Date.now() - started,
+    });
   }
 
   return bad("接口不存在: " + path, 404);

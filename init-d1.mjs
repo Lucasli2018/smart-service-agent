@@ -21,4 +21,4 @@ const res = await fetch(url, {
 });
 const j = await res.json();
 if (!j.success) { console.error("建表失败：", JSON.stringify(j.errors || j, null, 2)); process.exit(1); }
-console.log("✅ cs_ 表结构已应用到 dev 库（conversations / messages / faqs / ratings）");
+console.log("✅ cs_ 表结构已应用到 dev 库（conversations / messages / faqs / ratings / settings）");

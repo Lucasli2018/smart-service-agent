@@ -68,31 +68,90 @@ export function needHuman(text, { intentHit = false, turns = 0, faqHit = false }
   return null;
 }
 
-/* ============ 4. 可插拔 LLM 层 ============ */
-// 默认 Mock；配置 env.LLM_PROVIDER=openai|deepseek|workers-ai + 密钥即切换真实大模型。
-// 真实接入时把 system + 历史消息发给模型；此处保留完整调用骨架。
+/* ============ 4. 可插拔 LLM 层（D1 动态配置 + 环境变量兜底） ============ */
+// 供应商预设：base/model 缺省值；custom 需自行填写 base+model。
+export const LLM_PRESETS = {
+  mock:       { label: "Mock 演示", base: "", model: "", needKey: false, desc: "零配置，用规则+FAQ 生成拟人回复" },
+  deepseek:   { label: "DeepSeek", base: "https://api.deepseek.com/v1", model: "deepseek-chat", needKey: true, desc: "国内直连、中文效果好、性价比高" },
+  openai:     { label: "OpenAI", base: "https://api.openai.com/v1", model: "gpt-4o-mini", needKey: true, desc: "生态成熟，支持 GPT / o 系列" },
+  qwen:       { label: "通义千问", base: "https://dashscope.aliyuncs.com/compatible-mode/v1", model: "qwen-plus", needKey: true, desc: "阿里云百炼，OpenAI 兼容模式" },
+  custom:     { label: "自定义接口", base: "", model: "", needKey: true, desc: "任意 OpenAI 兼容的 /chat/completions 端点" },
+  "workers-ai":{ label: "Workers AI", base: "", model: "@cf/meta/llama-3.1-8b-instruct", needKey: false, desc: "Cloudflare 边缘模型，无需密钥" },
+};
+
+// 密钥脱敏：仅保留前 4 / 后 4 位，供后台安全展示
+export function maskSecret(s) {
+  const v = String(s || "");
+  if (!v) return "";
+  if (v.length <= 8) return v.slice(0, 2) + "****";
+  return v.slice(0, 4) + "****" + v.slice(-4);
+}
+
+// 由 D1 settings（key→value 对象）+ env 归一化出 LLM 配置
+export function llmConfig(settings = {}, env = {}) {
+  const pick = (k, ek, def = "") => {
+    const v = settings[k];
+    return (v !== undefined && v !== null && String(v) !== "") ? String(v) : (env[ek] || def);
+  };
+  const provider = pick("llm_provider", "LLM_PROVIDER", "mock").toLowerCase();
+  const p = LLM_PRESETS[provider] || LLM_PRESETS.mock;
+  const temperature = Number(pick("llm_temperature", "LLM_TEMPERATURE", "0.7"));
+  return {
+    provider,
+    base: pick("llm_base_url", "LLM_BASE_URL", p.base).trim(),
+    model: pick("llm_model", "LLM_MODEL", p.model).trim(),
+    apiKey: pick("llm_api_key", "LLM_API_KEY", "").trim(),
+    temperature: Number.isFinite(temperature) ? Math.max(0, Math.min(2, temperature)) : 0.7,
+    maxTokens: parseInt(pick("llm_max_tokens", "LLM_MAX_TOKENS", "600"), 10) || 600,
+    systemPrompt: String(settings.llm_system_prompt || ""),
+    needKey: p.needKey,
+  };
+}
+
+// 调用大模型；无论成功失败都返回字符串（失败自动降级 Mock）。
+// 调用结果的可观测信息写回 ctx：llmUsed / llmError / llmModel / llmProvider。
 export async function callLLM(messages, env = {}, ctx = {}) {
-  const provider = String(env.LLM_PROVIDER || "").toLowerCase();
-  if (provider === "openai" || provider === "deepseek") {
-    const base = env.LLM_BASE_URL || (provider === "deepseek" ? "https://api.deepseek.com/v1" : "https://api.openai.com/v1");
-    const model = env.LLM_MODEL || (provider === "deepseek" ? "deepseek-chat" : "gpt-4o-mini");
+  const cfg = ctx.llmConfig || llmConfig(ctx.settings || {}, env);
+  ctx.llmProvider = cfg.provider;
+  ctx.llmModel = cfg.model;
+  ctx.llmUsed = false;
+  ctx.llmError = "";
+  const fallback = (err) => { ctx.llmError = String(err || ""); return mockReply(messages, ctx); };
+
+  if (cfg.provider === "mock") return mockReply(messages, ctx);
+
+  // Workers AI：走 Cloudflare 绑定，无需密钥
+  if (cfg.provider === "workers-ai") {
+    if (!env.AI) return fallback("Workers AI 未绑定（env.AI 不可用）");
     try {
-      const r = await fetch(base.replace(/\/$/, "") + "/chat/completions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: "Bearer " + (env.LLM_API_KEY || "") },
-        body: JSON.stringify({ model, messages, temperature: 0.7, max_tokens: 500 }),
-      });
-      const j = await r.json();
-      return j.choices?.[0]?.message?.content || mockReply(messages, ctx);
-    } catch (e) { return mockReply(messages, ctx); }
+      const r = await env.AI.run(cfg.model, { messages, temperature: cfg.temperature, max_tokens: cfg.maxTokens });
+      const text = String(r?.response || r?.result || "").trim();
+      if (!text) throw new Error("模型返回为空");
+      ctx.llmUsed = true;
+      return text;
+    } catch (e) { return fallback(e?.message || e); }
   }
-  if (provider === "workers-ai" && env.AI) {
-    try {
-      const r = await env.AI.run("@cf/meta/llama-3.1-8b-instruct", { messages });
-      return r.response || mockReply(messages, ctx);
-    } catch (e) { return mockReply(messages, ctx); }
-  }
-  return mockReply(messages, ctx);
+
+  if (cfg.needKey && !cfg.apiKey) return fallback("未配置 API Key");
+  if (!cfg.base) return fallback("未配置接口地址（Base URL）");
+
+  try {
+    const r = await fetch(cfg.base.replace(/\/+$/, "") + "/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: "Bearer " + cfg.apiKey },
+      body: JSON.stringify({ model: cfg.model, messages, temperature: cfg.temperature, max_tokens: cfg.maxTokens, stream: false }),
+      signal: AbortSignal.timeout(20000),
+    });
+    if (!r.ok) {
+      const detail = await r.text().catch(() => "");
+      throw new Error("HTTP " + r.status + " " + detail.slice(0, 200));
+    }
+    const j = await r.json();
+    const text = String(j?.choices?.[0]?.message?.content ?? "").trim();
+    if (!text) throw new Error("模型返回为空");
+    ctx.llmUsed = true;
+    return text;
+  } catch (e) { return fallback(e?.message || e); }
 }
 
 // Mock 回复：根据命中 FAQ + 意图生成拟人化答案，保证零配置也能完整演示。
@@ -113,9 +172,12 @@ function mockReply(messages, ctx = {}) {
   return bank[intent] || bank.other;
 }
 
-/* ============ 5. 统一系统提示词 ============ */
-export function systemPrompt(faqContext) {
-  return "你是一名专业、友好、耐心的电商智能客服「小蜜」。请用简体中文回答，语气亲切（可用少量 emoji），回答简洁准确。\n" +
-    "规则：1) 优先依据知识库回答；2) 无法解决或用户要求时主动引导转人工；3) 不编造订单/退款结果，涉及具体订单请引导提供订单号或转人工。\n" +
-    (faqContext ? "【知识库参考】\n" + faqContext + "\n" : "");
+/* ============ 5. 统一系统提示词（支持后台自定义覆盖） ============ */
+export const DEFAULT_SYSTEM_PROMPT =
+  "你是一名专业、友好、耐心的电商智能客服「小蜜」。请用简体中文回答，语气亲切，回答简洁准确。\n" +
+  "规则：1) 优先依据知识库回答；2) 无法解决或用户要求时主动引导转人工；3) 不编造订单/退款结果，涉及具体订单请引导提供订单号或转人工。";
+
+export function systemPrompt(faqContext, custom = "") {
+  const base = String(custom || "").trim() || DEFAULT_SYSTEM_PROMPT;
+  return base + "\n" + (faqContext ? "【知识库参考】\n" + faqContext + "\n" : "");
 }

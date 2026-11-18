@@ -7,6 +7,8 @@
 > **v3 品牌与体验**：新增品牌 SVG favicon（解决标签页默认图标）+ PWA 可安装（manifest + Service Worker + 桌面图标）；会话标题由首条消息自动生成（不再全是「新咨询」）；后台支持导出 CSV、FAQ 按分类筛选。
 >
 > **v4 人工坐席闭环**：新增「坐席工作台」——待接入队列、坐席接入、人工双向对话、结束会话，转人工后 AI 自动退场不再插嘴；访客端新增欢迎语卡片、快捷问题引导、打字机回复动画、消息已送达状态、人工接待横幅，并补强移动端适配。
+>
+> **v5 真实大模型接入**：新增「模型设置」后台，可视化切换 **Mock / DeepSeek / OpenAI / 通义千问 / 自定义接口 / Workers AI** 六种引擎，填 Key 即热生效、无需改代码重新部署；支持 API Key 脱敏存储、一键连通性测试、自定义系统提示词与欢迎语；调用失败自动降级 Mock 且错误可观测。
 
 ## 功能
 
@@ -36,9 +38,12 @@
 - 📚 FAQ 知识库在线增删改 + 按分类筛选
 - ⬇️ 对话记录一键导出 CSV（UTF-8 BOM，Excel 直接打开）
 
-### 大模型
-- 默认内置 **Mock 引擎**，无需任何密钥即可完整演示
-- 可插拔真实大模型：在 `.env` 配置 `LLM_PROVIDER` 即可切换 `openai` / `deepseek` / `workers-ai`
+### 模型设置（v5）
+- ⚙️ **六种引擎**：Mock 演示 / DeepSeek / OpenAI / 通义千问 / 自定义 OpenAI 兼容接口 / Cloudflare Workers AI
+- 🔑 **后台可视化配置**：选供应商、填 API Key、改模型名与 Temperature，保存即时生效，无需改代码或重新部署
+- 🔒 **密钥安全**：API Key 只以脱敏形式回传后台（`sk-a****5678`），存储于云端 D1，留空保存不会覆盖原 Key
+- 🔌 **一键连通性测试**：真实调用一次模型并展示耗时与回复；失败自动降级 Mock 并说明原因
+- 📝 **自定义提示词 / 欢迎语**：后台直接编辑系统提示词与访客欢迎语，FAQ 命中内容会自动注入提示词作为知识库参考
 
 ## 部署（Cloudflare Pages）
 
@@ -62,18 +67,29 @@ node tests/server.mjs 8787     # 本地内存 D1 模拟后端
 # 浏览器打开 http://127.0.0.1:8787
 ```
 
-## 接入真实大模型
+## 接入真实大模型（推荐：后台可视化配置）
 
-在项目根 `.env` 中配置（复制 `.env.example`）：
+打开线上应用顶部「**模型设置**」标签 → 选择服务商卡片 → 填入 API Key → 保存。Base URL 与模型名会自动带出默认预设，按需修改即可；点「测试连接」验证。保存后**新消息立即生效**，无需改代码或重新部署。
+
+- **DeepSeek**：国内直连、中文效果好，填 `sk-` 开头的 Key 即可
+- **OpenAI / 通义千问**：同样只需 API Key，默认端点已预置
+- **自定义接口**：任意兼容 `/chat/completions` 的服务，需填 Base URL + 模型名
+- **Workers AI**：零密钥，用 Cloudflare 边缘模型（需 Pages 绑定 `AI`）
+- **Mock**：默认引擎，零配置即可完整演示
+
+### 环境变量兜底（可选）
+
+也可在项目根 `.env` / Pages 环境变量配置，作为 D1 未配置时的兜底（复制 `.env.example`）：
 
 ```env
-LLM_PROVIDER=deepseek          # openai | deepseek | workers-ai
+LLM_PROVIDER=deepseek    # mock|deepseek|openai|qwen|custom|workers-ai
 LLM_API_KEY=sk-xxxx
 LLM_BASE_URL=https://api.deepseek.com/v1
 LLM_MODEL=deepseek-chat
+LLM_TEMPERATURE=0.7
 ```
 
-Pages 项目同样需要在 设置→函数→环境变量 里加同名变量。**不留 Key 也能跑_mock**。
+优先级：**D1 后台配置 > 环境变量 > Mock**。任何方式都不配也能以 Mock 完整运行。
 
 ## 数据模型（D1 · `cs_` 前缀）
 
@@ -83,6 +99,7 @@ Pages 项目同样需要在 设置→函数→环境变量 里加同名变量。
 | `cs_messages` | 消息（角色、内容、意图、来源） |
 | `cs_faqs` | FAQ 知识库（问题、答案、分类、关键词、命中数） |
 | `cs_ratings` | 满意度评价（星级、留言） |
+| `cs_settings` | 系统配置（key-value：大模型供应商/密钥/提示词/欢迎语） |
 
 ## 文件结构
 
@@ -101,7 +118,7 @@ smart-service-agent/
 ├── migrate.mjs                 # 存量库幂等迁移（补新增列，如 v4 的 agent）
 ├── scripts/                    # config.mjs · deploy.mjs · gen-icons.py（图标生成器）
 ├── functions/
-│   ├── _lib/core.mjs           # 意图识别 / FAQ 检索 / 转人工 / 可插拔 LLM
+│   ├── _lib/core.mjs           # 意图识别 / FAQ 检索 / 转人工 / 六引擎可插拔 LLM
 │   └── api/[[route]].mjs       # 所有 API
 └── tests/                      # server.mjs（本地模拟后端）· probe-server.mjs（E2E 探针）
 ```
