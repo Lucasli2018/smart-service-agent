@@ -1,0 +1,12 @@
+name = "smart-service-agent"
+pages_build_output_dir = "."
+compatibility_date = "2024-09-23"
+
+# 智能客服 Agent · Pages Functions 的 D1 绑定
+# 共享 dev 库，所有表带 cs_ 前缀避免跨项目冲突。
+# 本地开发：wrangler pages dev . --port 8787
+# 部署：node scripts/deploy.mjs
+[[d1_databases]]
+binding = "DB"
+database_name = "dev"
+database_id = "3c83aee3-4645-450b-b50b-6488750deeb4"
