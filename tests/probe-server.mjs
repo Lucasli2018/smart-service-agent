@@ -32,5 +32,9 @@ http.createServer(async (req, res) => {
   } else if (url.pathname === "/icon.svg") { res.writeHead(200, { "Content-Type": "image/svg+xml" }); res.end(readFileSync(new URL("../icon.svg", import.meta.url), "utf8")); }
   else if (url.pathname === "/manifest.webmanifest") { res.writeHead(200, { "Content-Type": "application/manifest+json" }); res.end(readFileSync(new URL("../manifest.webmanifest", import.meta.url), "utf8")); }
   else if (url.pathname === "/sw.js") { res.writeHead(200, { "Content-Type": "application/javascript" }); res.end(readFileSync(new URL("../sw.js", import.meta.url), "utf8")); }
+  else if (url.pathname === "/favicon.ico") { res.writeHead(200, { "Content-Type": "image/x-icon" }); res.end(readFileSync(new URL("../favicon.ico", import.meta.url))); }
+  else if (url.pathname === "/apple-touch-icon.png") { res.writeHead(200, { "Content-Type": "image/png" }); res.end(readFileSync(new URL("../apple-touch-icon.png", import.meta.url))); }
+  else if (url.pathname === "/icon-192.png") { res.writeHead(200, { "Content-Type": "image/png" }); res.end(readFileSync(new URL("../icon-192.png", import.meta.url))); }
+  else if (url.pathname === "/icon-512.png") { res.writeHead(200, { "Content-Type": "image/png" }); res.end(readFileSync(new URL("../icon-512.png", import.meta.url))); }
   else { res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" }); res.end(html); }
 }).listen(8791, () => console.log("probe server on 8791"));

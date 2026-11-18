@@ -77,13 +77,16 @@ Pages 项目同样需要在 设置→函数→环境变量 里加同名变量。
 ```
 smart-service-agent/
 ├── index.html                  # 前端单文件（客服 + 管理后台）
-├── icon.svg                    # 品牌图标（favicon + PWA 桌面图标）
+├── favicon.ico                 # 浏览器标签页图标（16/32/48/64，ico 兜底）
+├── icon.svg                    # 品牌图标（矢量，现代浏览器首选）
+├── apple-touch-icon.png        # iOS 添加到主屏图标（180×180）
+├── icon-192.png / icon-512.png # PWA 安装图标
 ├── manifest.webmanifest        # PWA 清单
 ├── sw.js                       # Service Worker（静态外壳缓存，API 不缓存）
 ├── wrangler.toml               # Pages 配置 + D1 绑定
 ├── schema.sql                  # cs_ 表结构
 ├── init-d1.mjs / seed.mjs      # 建表 / 播种
-├── scripts/                    # config.mjs · deploy.mjs
+├── scripts/                    # config.mjs · deploy.mjs · gen-icons.py（图标生成器）
 ├── functions/
 │   ├── _lib/core.mjs           # 意图识别 / FAQ 检索 / 转人工 / 可插拔 LLM
 │   └── api/[[route]].mjs       # 所有 API

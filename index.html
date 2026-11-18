@@ -4,9 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>小蜜 · 智能客服 Agent</title>
-<link rel="icon" type="image/svg+xml" href="/icon.svg">
-<link rel="apple-touch-icon" href="/icon.svg">
-<link rel="manifest" href="/manifest.webmanifest">
+<!-- 版本号参数强制绕过浏览器对 favicon 的顽固缓存；ico 兜底，svg 为现代浏览器首选 -->
+<link rel="icon" href="/favicon.ico?v=4" sizes="any">
+<link rel="icon" type="image/svg+xml" href="/icon.svg?v=4">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png?v=4">
+<link rel="manifest" href="/manifest.webmanifest?v=4">
 <meta name="theme-color" content="#18181B">
 <meta name="description" content="小蜜智能客服：多轮对话、FAQ 检索、意图识别、自动转人工">
 <style>
@@ -662,7 +664,7 @@ document.querySelectorAll(".mask").forEach(m=>m.onclick=e=>{if(e.target===m)m.cl
 /* ============ 启动 ============ */
 loadConversations();
 // 注册 PWA Service Worker（离线可访问外壳，API 永不缓存）
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("/sw.js").catch(()=>{}))}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>{navigator.serviceWorker.register("/sw.js?v=4").then(r=>r&&r.update&&r.update()).catch(()=>{})})}
 </script>
 </body>
 </html>

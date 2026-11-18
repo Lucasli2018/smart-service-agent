@@ -39,6 +39,10 @@ const STATIC = {
   "/icon.svg": ["image/svg+xml", readFileSync(new URL("../icon.svg", import.meta.url), "utf8")],
   "/manifest.webmanifest": ["application/manifest+json", readFileSync(new URL("../manifest.webmanifest", import.meta.url), "utf8")],
   "/sw.js": ["application/javascript", readFileSync(new URL("../sw.js", import.meta.url), "utf8")],
+  "/favicon.ico": ["image/x-icon", readFileSync(new URL("../favicon.ico", import.meta.url))],
+  "/apple-touch-icon.png": ["image/png", readFileSync(new URL("../apple-touch-icon.png", import.meta.url))],
+  "/icon-192.png": ["image/png", readFileSync(new URL("../icon-192.png", import.meta.url))],
+  "/icon-512.png": ["image/png", readFileSync(new URL("../icon-512.png", import.meta.url))],
 };
 http.createServer(async (req, res) => {
   const url = new URL(req.url, "http://x");

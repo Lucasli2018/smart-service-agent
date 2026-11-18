@@ -1,6 +1,10 @@
 /* 小蜜智能客服 · Service Worker（仅缓存静态外壳，API 永不缓存） */
-const CACHE = "csa-v3";
-const SHELL = ["/", "/index.html", "/icon.svg", "/manifest.webmanifest"];
+const CACHE = "csa-v4";
+const SHELL = [
+  "/", "/index.html",
+  "/icon.svg", "/favicon.ico", "/apple-touch-icon.png",
+  "/icon-192.png", "/icon-512.png", "/manifest.webmanifest",
+];
 self.addEventListener("install", e => { self.skipWaiting(); e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).catch(() => {})); });
 self.addEventListener("activate", e => {
   e.waitUntil(Promise.all([
