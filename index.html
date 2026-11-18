@@ -237,6 +237,54 @@ button{cursor:pointer;border:none;background:none;color:inherit}
 .empty{text-align:center;color:var(--ink-3);padding:38px 0;font-size:13px}
 .empty .ic{width:26px;height:26px;display:block;margin:0 auto 10px;opacity:.5}
 .loading{text-align:center;color:var(--ink-3);padding:38px;font-size:13px}
+
+/* v4 · 体验增强 */
+.welcome-card{max-width:78%;background:linear-gradient(135deg,var(--surface),var(--accent-soft));border:1px solid #DCDFFB;border-radius:14px;padding:16px 18px;box-shadow:var(--shadow);margin-bottom:22px}
+.wc-top{display:flex;align-items:center;gap:9px;font-weight:750;font-size:14px;color:var(--ink)}
+.wc-top .wc-ava{width:30px;height:30px;border-radius:9px;background:var(--ink);color:#fff;display:grid;place-items:center}
+.wc-top .wc-ava .ic{width:17px;height:17px}
+.wc-desc{font-size:12.5px;color:var(--ink-2);margin-top:8px;line-height:1.7}
+.wc-tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}
+.wc-tags span{font-size:11px;font-weight:650;color:var(--accent);background:#fff;border:1px solid #DCDFFB;padding:3px 9px;border-radius:7px}
+.msg.bot.human .mava{background:var(--accent);color:#fff}
+.msg.bot.human .mava .ic{width:17px;height:17px}
+.msg.bot .bubble.human{background:var(--accent-soft);border-color:#DCDFFB}
+.who-human{color:var(--accent);font-weight:700;font-size:10.5px;display:inline-flex;align-items:center;gap:3px}
+.who-human .ic{width:11px;height:11px}
+.delivered{color:var(--ink-3);display:inline-flex;align-items:center;gap:3px}
+.delivered .ic{width:11px;height:11px}
+.quick-hint{font-size:10.5px;color:var(--ink-3);font-weight:700;letter-spacing:.04em;margin-bottom:6px}
+.human-bar{display:flex;align-items:center;gap:8px;background:#FFFBF5;border:1px solid #FBE7C6;color:var(--warn);border-radius:9px;padding:8px 12px;font-size:12px;font-weight:650;margin-bottom:10px}
+.human-bar .ic{width:15px;height:15px}
+.human-bar[hidden]{display:none}
+@keyframes caretBlink{0%,50%{opacity:1}51%,100%{opacity:0}}
+.typing-caret{display:inline-block;width:2px;height:1em;background:var(--accent);margin-left:2px;vertical-align:-2px;animation:caretBlink .8s steps(1) infinite}
+
+/* v4 · 坐席工作台 */
+.qbadge{background:var(--warn);color:#fff;font-size:10px;font-weight:750;min-width:17px;height:17px;padding:0 4px;border-radius:9px;display:inline-grid;place-items:center;margin-left:3px}
+.qbadge[hidden]{display:none}
+.agent-me{display:flex;align-items:center;gap:8px;margin-bottom:11px;font-size:12px;color:var(--ink-2);font-weight:600}
+.agent-me input{flex:1;min-width:0;border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:12.5px;outline:none;background:var(--surface-2);color:var(--ink)}
+.agent-me input:focus{border-color:var(--accent);background:#fff}
+.agent-tabs{display:flex;gap:6px;margin-bottom:8px}
+.agent-tabs .chip{flex:1;justify-content:center;display:flex;align-items:center;gap:5px}
+.agent-tabs .chip b{background:rgba(0,0,0,.06);border-radius:6px;padding:0 5px;font-size:10.5px}
+.agent-tabs .chip.on b{background:rgba(255,255,255,.22)}
+.q-item{padding:11px 12px;border-radius:10px;margin-bottom:4px;cursor:pointer;transition:.15s;border:1px solid transparent;display:flex;gap:10px;align-items:flex-start}
+.q-item:hover{background:var(--surface-2)}
+.q-item.on{background:var(--accent-soft);border-color:#DCDFFB}
+.q-item .qi{width:32px;height:32px;border-radius:9px;background:#FEF3E2;color:var(--warn);display:grid;place-items:center;flex-shrink:0}
+.q-item.active .qi{background:#E8F8F2;color:var(--ok)}
+.q-item.on .qi{background:#fff}
+.q-item .qi .ic{width:16px;height:16px}
+.q-item .qb{flex:1;min-width:0}
+.q-item .qt{font-weight:650;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink)}
+.q-item .qp{font-size:11.5px;color:var(--ink-2);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.q-item .qm{font-size:10.5px;color:var(--ink-3);margin-top:3px;display:flex;gap:6px;align-items:center}
+.q-empty{text-align:center;color:var(--ink-3);padding:26px 10px;font-size:12px}
+.q-empty .ic{width:24px;height:24px;display:block;margin:0 auto 8px;opacity:.5}
+@media(max-width:860px){.human-bar,.wc-tags{flex-wrap:wrap}}
+@media(max-width:520px){.topbar{gap:8px;padding:0 10px}.brand{font-size:14px}.tab{padding:7px 10px;font-size:12px}.tab .ic{width:14px;height:14px}.conn span{display:none}.msgs{padding:18px 3%}.composer{padding:10px 3% 14px}.welcome-card{max-width:90%}.bubble{max-width:84%}}
 </style>
 </head>
 <body>
@@ -245,6 +293,7 @@ button{cursor:pointer;border:none;background:none;color:inherit}
   <div class="brand"><span class="logo" id="logoIcon"></span> 小蜜 · 智能客服 <span class="ver">AGENT</span></div>
   <div class="tabs">
     <button class="tab on" data-view="chat"><span class="ic-slot" data-ico="chat"></span>在线客服</button>
+    <button class="tab" data-view="agent"><span class="ic-slot" data-ico="headset"></span>坐席工作台<span class="qbadge" id="qBadge" hidden>0</span></button>
     <button class="tab" data-view="admin"><span class="ic-slot" data-ico="chart"></span>管理后台</button>
   </div>
   <div class="conn" id="conn"><i></i><span>连接中</span></div>
@@ -271,6 +320,8 @@ button{cursor:pointer;border:none;background:none;color:inherit}
       </div>
       <div class="msgs" id="msgs"></div>
       <div class="composer">
+        <div class="human-bar" id="humanBar" hidden><span class="ic-slot" data-ico="headset"></span><span id="humanBarTxt">人工客服接待中，您的消息将直接转交坐席</span></div>
+        <div class="quick-hint">猜你想问</div>
         <div class="quick" id="quick">
           <button>如何申请退款？</button><button>查询订单物流</button><button>App 闪退怎么办</button><button>转人工</button>
         </div>
@@ -332,6 +383,40 @@ button{cursor:pointer;border:none;background:none;color:inherit}
   </div></div>
 </div>
 
+<!-- ========== 坐席工作台视图 ========== -->
+<div class="view" id="view-agent">
+  <div class="chat-wrap">
+    <aside class="side">
+      <div class="side-top">
+        <div class="row"><b>坐席工作台</b><button class="mini-btn" id="agentRefresh"><span class="ic-slot" data-ico="refresh"></span>刷新</button></div>
+        <div class="agent-me"><span>当前坐席</span><input id="agentName" value="客服专员" maxlength="20" placeholder="输入您的坐席名"></div>
+        <div class="agent-tabs">
+          <button class="chip on" data-q="queue">待接入 <b id="qCount">0</b></button>
+          <button class="chip" data-q="active">服务中 <b id="aCount">0</b></button>
+        </div>
+      </div>
+      <div class="conv-list" id="agentList"><div class="loading">加载中…</div></div>
+    </aside>
+    <main class="chat-main">
+      <div class="chat-head">
+        <div class="bot-ava" id="agentHeadAva"></div>
+        <div class="info"><b id="agentHeadTitle">选择会话</b><span id="agentHeadSub">从左侧队列接入一个咨询</span></div>
+        <div class="head-actions">
+          <button class="mini-btn" id="agentAccept" hidden><span class="ic-slot" data-ico="headset"></span>接入会话</button>
+          <button class="mini-btn human" id="agentEnd" hidden><span class="ic-slot" data-ico="x"></span>结束会话</button>
+        </div>
+      </div>
+      <div class="msgs" id="agentMsgs"><div class="empty"><span class="ic-slot" data-ico="briefcase"></span>请从左侧选择一个会话开始服务</div></div>
+      <div class="composer" id="agentComposer" hidden>
+        <div class="input-row">
+          <textarea id="agentInput" placeholder="输入人工回复，Enter 发送，Shift+Enter 换行…"></textarea>
+          <button class="send-btn" id="agentSend"></button>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
 <!-- 会话详情 -->
 <div class="mask" id="detailMask"><div class="modal">
   <div class="modal-h"><b id="detailTitle">对话详情</b><span class="x" data-close></span></div>
@@ -385,6 +470,10 @@ const ICONS={
   check:'<path d="M20 6L9 17l-5-5"/>',
   inbox:'<polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>',
   download:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>',
+  briefcase:'<rect x="2" y="7" width="20" height="14" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M2 12h20"/><path d="M10 12v2h4v-2"/>',
+  clock:'<circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/>',
+  checkcircle:'<circle cx="12" cy="12" r="9"/><path d="M8.5 12.5l2.5 2.5 4.5-5"/>',
+  refresh:'<polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.5 9a9 9 0 0 1 14.9-3.4L23 10M1 14l4.6 4.4A9 9 0 0 0 20.5 15"/>',
 };
 function ico(n,cls=''){return `<svg class="ic ${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n]||''}</svg>`}
 function starSvg(on){return `<svg class="ic" viewBox="0 0 24 24" fill="${on?'currentColor':'none'}" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round">${ICONS.star}</svg>`}
@@ -395,6 +484,8 @@ mountIcons();
 $('logoIcon').innerHTML=ico('bot');
 $('headAva').innerHTML=ico('bot');
 $('send').innerHTML=ico('send');
+$('agentSend').innerHTML=ico('send');
+$('agentHeadAva').innerHTML=ico('headset');
 document.querySelectorAll('#rateStars').forEach(el=>el.innerHTML=[1,2,3,4,5].map(s=>`<span class="star" data-s="${s}">${starSvg(false)}</span>`).join(''));
 
 /* ============ 全局状态 ============ */
@@ -403,6 +494,9 @@ const S={
   visitor:localStorage.getItem("csa_visitor")||(()=>{const v="v_"+Math.random().toString(36).slice(2)+Date.now().toString(36);localStorage.setItem("csa_visitor",v);return v})(),
   convId:null,conversations:[],messages:[],rating:null,sending:false,
   adminStatus:"",editingFaq:null,faqCat:"",
+  view:"chat",
+  agentName:localStorage.getItem("csa_agent")||"客服专员",
+  agentQueue:[],agentActive:[],agentTab:"queue",agentConv:null,agentMsgs:[],agentSending:false,
 };
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const fmt=ts=>{if(!ts)return"";const d=new Date(ts);return`${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`};
@@ -425,7 +519,9 @@ document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>{
   document.querySelectorAll(".tab").forEach(x=>x.classList.remove("on"));
   document.querySelectorAll(".view").forEach(x=>x.classList.remove("on"));
   t.classList.add("on");$("view-"+t.dataset.view).classList.add("on");
+  S.view=t.dataset.view;
   if(t.dataset.view==="admin")loadAdmin();
+  if(t.dataset.view==="agent")loadAgentData();
 });
 
 /* ============ 会话列表 ============ */
@@ -463,22 +559,47 @@ async function openConv(id){
   S.convId=id;renderConvList();$("msgs").innerHTML='<div class="loading">加载消息…</div>';
   try{
     const j=await api("/messages?conv="+encodeURIComponent(id));
-    S.messages=j.messages;S.rating=j.rating;renderMessages();
+    S.messages=j.messages;S.rating=j.rating;renderMessages();syncHumanBar();
   }catch(e){$("msgs").innerHTML='<div class="empty">'+ico("chat")+'加载失败</div>'}
 }
-function renderMessages(){
+function renderMessages(animate){
   if(!S.messages.length){$("msgs").innerHTML='<div class="empty">'+ico("chat")+'开始咨询吧</div>';return}
   $("msgs").innerHTML=S.messages.map(m=>{
     if(m.role==="system")return`<div class="msg system"><div class="bubble">${ico("headset")}${esc(m.content)}</div></div>`;
-    const isU=m.role==="user";
+    if(m.source==="greeting")return`<div class="welcome-card">
+      <div class="wc-top"><span class="wc-ava">${ico("bot")}</span>您好，我是智能客服小蜜</div>
+      <div class="wc-desc">我可以帮您处理退款、订单查询、技术支持等常见问题。描述得越具体，我回答得越准确～ 遇到解决不了的问题，随时可以说「转人工」。</div>
+      <div class="wc-tags"><span>退款进度</span><span>订单物流</span><span>技术故障</span><span>转人工</span></div>
+    </div>`;
+    const isU=m.role==="user";const human=m.source==="human";
     const tag=m.intent&&m.intent!=="other"&&isU?`<span class="tag-intent">${ico(intentIco(m.intent))}${intentName(m.intent)}</span>`:"";
-    return`<div class="msg ${isU?"user":"bot"}">
-      <div class="mava">${ico(isU?"users":"bot")}</div>
-      <div><div class="bubble">${esc(m.content)}</div>
-      <div class="meta">${tag}<span>${fmt(m.created)}</span>${m.source==="transfer"?'<span style="color:var(--warn)">已转人工</span>':""}</div></div>
+    const who=human?`<span class="who-human">${ico("headset")}人工客服</span>`:"";
+    const read=isU?`<span class="delivered">${ico("checkcircle")}已送达</span>`:"";
+    return`<div class="msg ${isU?"user":"bot"} ${human?"human":""}">
+      <div class="mava">${ico(isU?"users":human?"headset":"bot")}</div>
+      <div><div class="bubble ${human?"human":""}">${esc(m.content)}</div>
+      <div class="meta">${who}${tag}<span>${fmt(m.created)}</span>${read}${m.source==="transfer"?'<span style="color:var(--warn)">已转人工</span>':""}</div></div>
     </div>`;
   }).join("")+(S.rating?`<div class="rate-card">${ico("check")}您已评分 ${stars(S.rating.score)} · 感谢您的反馈</div>`:"");
+  syncHumanBar();
+  if(animate&&S.messages.length){const last=S.messages[S.messages.length-1];if(last.role==="agent"&&last.source!=="greeting"){
+    const bs=$("msgs").querySelectorAll('.msg.bot .bubble');const b=bs[bs.length-1];
+    if(b)typeWriter(b,last.content);
+  }}
   scrollBottom();
+}
+function typeWriter(el,text){
+  let i=0;el.textContent="";const caret=document.createElement("span");caret.className="typing-caret";el.appendChild(caret);
+  const tick=()=>{i++;caret.textContent=text.slice(0,i);if(i<text.length)setTimeout(tick,16);else setTimeout(()=>caret.remove(),600);scrollBottom()};
+  setTimeout(tick,40);
+}
+function syncHumanBar(){
+  const bar=$("humanBar");if(!bar)return;
+  const c=S.conversations.find(x=>x.id===S.convId);
+  const on=c&&(c.status==="transferred"||c.status==="serving");
+  bar.hidden=!on;
+  if(on)$("humanBarTxt").textContent=c.status==="serving"?"人工客服已接入，您的消息将直接转交坐席":"人工客服接待中，您的消息将直接转交坐席";
+  const quick=$("quick");if(quick)quick.style.opacity=on?".5":"1";
 }
 function scrollBottom(){const m=$("msgs");m.scrollTop=m.scrollHeight}
 
@@ -495,7 +616,7 @@ async function send(text){
     $("typing")?.remove();
     S.messages[S.messages.length-1].intent=j.intent;
     S.messages.push({id:"a_"+Date.now(),role:"agent",content:j.reply,intent:j.intent,source:j.source,created:Date.now()});
-    renderMessages();
+    renderMessages(true);
     if(j.transferred)toast("已为您转接人工客服");
     loadConversations();
   }catch(e){$("typing")?.remove();toast("发送失败："+e.message)}
@@ -584,6 +705,122 @@ async function openDetail(id){
   }catch(e){toast(e.message)}
 }
 
+/* ============ 坐席工作台 ============ */
+function initAgent(){
+  const name=$("agentName");name.value=S.agentName;
+  name.onchange=()=>{S.agentName=name.value.trim()||"客服专员";localStorage.setItem("csa_agent",S.agentName);loadAgentData()};
+  $("agentRefresh").onclick=()=>loadAgentData(true);
+  document.querySelectorAll(".agent-tabs .chip").forEach(c=>c.onclick=()=>{
+    document.querySelectorAll(".agent-tabs .chip").forEach(x=>x.classList.remove("on"));
+    c.classList.add("on");S.agentTab=c.dataset.q;S.agentConv=null;renderAgentList();renderAgentChat();
+  });
+  $("agentAccept").onclick=acceptConv;
+  $("agentEnd").onclick=endConv;
+  $("agentSend").onclick=()=>sendAgentReply();
+  $("agentInput").onkeydown=e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendAgentReply()}};
+  setInterval(()=>{if(S.view==="agent")loadAgentData(false,true)},5000);
+}
+async function loadAgentData(showToast,silent){
+  try{
+    const [q,a]=await Promise.all([api("/agent/queue"),api("/agent/active?agent="+encodeURIComponent(S.agentName))]);
+    S.agentQueue=q.conversations;S.agentActive=a.conversations;
+    renderAgentList();updateQBadge();
+    if(S.agentConv){
+      const inList=[...S.agentQueue,...S.agentActive].some(x=>x.id===S.agentConv);
+      if(!inList){S.agentConv=null;renderAgentChat()}
+      else if(silent)refreshAgentMsgs();
+    }
+    if(showToast)toast("已刷新队列");
+  }catch(e){if(showToast)toast("刷新失败："+e.message)}
+}
+function updateQBadge(){
+  const b=$("qBadge");const n=S.agentQueue.length;
+  b.textContent=n>99?"99+":n;b.hidden=n===0;
+  $("qCount").textContent=S.agentQueue.length;$("aCount").textContent=S.agentActive.length;
+}
+function renderAgentList(){
+  const list=S.agentTab==="queue"?S.agentQueue:S.agentActive;
+  const el=$("agentList");
+  if(!list.length){
+    el.innerHTML='<div class="q-empty">'+ico(S.agentTab==="queue"?"checkcircle":"briefcase")+(S.agentTab==="queue"?"暂无待接入会话":"暂无服务中的会话")+'</div>';return;
+  }
+  el.innerHTML=list.map(c=>`<div class="q-item ${S.agentTab==="active"?"active":""} ${c.id===S.agentConv?"on":""}" data-id="${c.id}">
+    <div class="qi">${ico(S.agentTab==="queue"?"clock":"headset")}</div>
+    <div class="qb"><div class="qt">${badgeForStatus(c.status)}${esc(c.title||"新咨询")}</div>
+    <div class="qp">${esc(c.last_user||"点击查看对话")}</div>
+    <div class="qm"><span>${fmt(c.updated)}</span><span>${c.msg_count} 条消息</span>${c.agent?'<span>· '+esc(c.agent)+'</span>':""}</div></div>
+  </div>`).join("");
+  el.querySelectorAll(".q-item").forEach(it=>it.onclick=()=>openAgentConv(it.dataset.id));
+}
+function badgeForStatus(st){
+  if(st==="transferred")return'<span class="badge t">待接入</span>';
+  if(st==="serving")return'<span class="badge">服务中</span>';
+  return"";
+}
+async function openAgentConv(id){
+  S.agentConv=id;renderAgentList();
+  $("agentMsgs").innerHTML='<div class="loading">加载消息…</div>';
+  try{
+    const j=await api("/messages?conv="+encodeURIComponent(id));
+    S.agentMsgs=j.messages;renderAgentChat();
+  }catch(e){$("agentMsgs").innerHTML='<div class="empty">加载失败</div>'}
+}
+async function refreshAgentMsgs(){
+  if(!S.agentConv)return;
+  try{const j=await api("/messages?conv="+encodeURIComponent(S.agentConv));S.agentMsgs=j.messages;renderAgentChat()}catch(e){}
+}
+function renderAgentChat(){
+  const headT=$("agentHeadTitle"),headS=$("agentHeadSub");
+  const acc=$("agentAccept"),end=$("agentEnd"),comp=$("agentComposer"),box=$("agentMsgs");
+  if(!S.agentConv){
+    headT.textContent="选择会话";headS.textContent="从左侧队列接入一个咨询";
+    acc.hidden=true;end.hidden=true;comp.hidden=true;
+    box.innerHTML='<div class="empty">'+ico("briefcase")+'请从左侧选择一个会话开始服务</div>';return;
+  }
+  const c=[...S.agentQueue,...S.agentActive].find(x=>x.id===S.agentConv)||{};
+  headT.textContent=c.title||"会话详情";
+  const waiting=c.status==="transferred";
+  headS.textContent=waiting?"等待接入 · 访客已转人工":(c.status==="serving"?"人工服务中 · "+(c.agent||S.agentName):"会话详情");
+  acc.hidden=!waiting;end.hidden=c.status!=="serving";comp.hidden=c.status!=="serving";
+  if(!S.agentMsgs.length){box.innerHTML='<div class="empty">暂无消息</div>';return}
+  box.innerHTML=S.agentMsgs.map(m=>{
+    if(m.role==="system")return`<div class="msg system"><div class="bubble">${ico("headset")}${esc(m.content)}</div></div>`;
+    if(m.source==="greeting")return`<div class="msg bot"><div class="mava">${ico("bot")}</div><div><div class="bubble">${esc(m.content)}</div><div class="meta">欢迎语</div></div></div>`;
+    const isU=m.role==="user",human=m.source==="human";
+    return`<div class="msg ${isU?"user":"bot"}">
+      <div class="mava">${ico(isU?"users":human?"headset":"bot")}</div>
+      <div><div class="bubble ${human?"human":""}">${esc(m.content)}</div>
+      <div class="meta"><span>${isU?"访客":human?esc(c.agent||"人工客服"):"小蜜"}</span><span>${fmt(m.created)}</span></div></div>
+    </div>`;
+  }).join("");
+  box.scrollTop=box.scrollHeight;
+}
+async function acceptConv(){
+  if(!S.agentConv)return;
+  try{
+    await api("/agent/accept",{method:"POST",body:JSON.stringify({conv:S.agentConv,agent:S.agentName})});
+    toast("已接入会话");await loadAgentData();await openAgentConv(S.agentConv);
+  }catch(e){toast(e.message)}
+}
+async function sendAgentReply(){
+  if(S.agentSending||!S.agentConv)return;
+  const text=$("agentInput").value.trim();if(!text)return;
+  S.agentSending=true;$("agentSend").disabled=true;
+  try{
+    await api("/agent/reply",{method:"POST",body:JSON.stringify({conv:S.agentConv,agent:S.agentName,text})});
+    $("agentInput").value="";await refreshAgentMsgs();await loadAgentData(false,true);
+  }catch(e){toast(e.message)}
+  finally{S.agentSending=false;$("agentSend").disabled=false;$("agentInput").focus()}
+}
+async function endConv(){
+  if(!S.agentConv)return;
+  if(!confirm("确定结束当前会话吗？结束后访客将无法继续咨询。"))return;
+  try{
+    await api("/agent/close",{method:"POST",body:JSON.stringify({conv:S.agentConv})});
+    toast("会话已结束");S.agentConv=null;await loadAgentData();renderAgentChat();
+  }catch(e){toast(e.message)}
+}
+
 /* ============ FAQ 管理 ============ */
 let allFaqs=[];
 function renderFaqList(){
@@ -662,7 +899,7 @@ document.querySelectorAll("[data-close]").forEach(el=>{el.innerHTML=ico("x");el.
 document.querySelectorAll(".mask").forEach(m=>m.onclick=e=>{if(e.target===m)m.classList.remove("on")});
 
 /* ============ 启动 ============ */
-loadConversations();
+loadConversations();initAgent();
 // 注册 PWA Service Worker（离线可访问外壳，API 永不缓存）
 if("serviceWorker" in navigator){window.addEventListener("load",()=>{navigator.serviceWorker.register("/sw.js?v=4").then(r=>r&&r.update&&r.update()).catch(()=>{})})}
 </script>

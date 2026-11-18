@@ -1,5 +1,6 @@
 /* 智能客服 Agent · API 路由（Cloudflare Pages Functions，D1 绑定名 DB）
    访客端：新会话 / 发消息（多轮）/ 历史 / 评价 / 转人工
+   坐席端：待接入队列 / 接入 / 人工回复 / 结束会话
    管理端：对话记录 / 满意度统计 / FAQ 增删改 */
 import {
   json, bad, now, uid, detectIntent, searchFaq, needHuman, callLLM, systemPrompt
@@ -28,7 +29,7 @@ export async function onRequest(context) {
       .bind(id, visitor, String(body.title || "新咨询").slice(0, 60), t, t).run();
     // 欢迎语
     await env.DB.prepare("INSERT INTO cs_messages (id,conv_id,role,content,intent,source,created) VALUES (?1,?2,'agent',?3,'','greeting',?4)")
-      .bind(uid(), id, "您好，我是智能客服小蜜🐱 关于退款、订单查询、技术支持都可以问我～ 也可以直接说「转人工」哦。", t).run();
+      .bind(uid(), id, "您好，我是智能客服小蜜。关于退款、订单查询、技术支持都可以问我～ 也可以直接说「转人工」哦。", t).run();
     return json({ ok: true, id, visitor });
   }
 
@@ -62,6 +63,66 @@ export async function onRequest(context) {
     return json({ ok: true, conversation: c, messages: r.results, rating: rating || null });
   }
 
+  /* ================= 坐席工作台 API ================= */
+  // 待接入队列：已转人工、尚无坐席接入
+  if (path === "agent/queue" && method === "GET") {
+    const r = await env.DB.prepare(
+      "SELECT c.*, " +
+      "(SELECT content FROM cs_messages m WHERE m.conv_id=c.id AND m.role='user' ORDER BY m.created DESC LIMIT 1) AS last_user, " +
+      "(SELECT COUNT(*) FROM cs_messages m WHERE m.conv_id=c.id) AS msg_count " +
+      "FROM cs_conversations c WHERE c.status='transferred' AND (c.agent='' OR c.agent IS NULL) ORDER BY c.updated ASC LIMIT 100"
+    ).all();
+    return json({ ok: true, conversations: r.results });
+  }
+  // 坐席正在服务的会话
+  if (path === "agent/active" && method === "GET") {
+    const agent = String(get.get("agent") || "");
+    const sql = agent
+      ? "SELECT c.*, (SELECT COUNT(*) FROM cs_messages m WHERE m.conv_id=c.id) AS msg_count FROM cs_conversations c WHERE c.status='serving' AND c.agent=?1 ORDER BY c.updated DESC LIMIT 100"
+      : "SELECT c.*, (SELECT COUNT(*) FROM cs_messages m WHERE m.conv_id=c.id) AS msg_count FROM cs_conversations c WHERE c.status='serving' ORDER BY c.updated DESC LIMIT 100";
+    const r = agent ? await env.DB.prepare(sql).bind(agent).all() : await env.DB.prepare(sql).all();
+    return json({ ok: true, conversations: r.results });
+  }
+  // 坐席接入
+  if (path === "agent/accept" && method === "POST") {
+    const cid = String(body.conv || "");
+    const agent = String(body.agent || "客服专员").trim().slice(0, 40) || "客服专员";
+    const c = await env.DB.prepare("SELECT * FROM cs_conversations WHERE id=?1").bind(cid).first();
+    if (!c) return bad("会话不存在", 404);
+    if (c.status === "closed") return bad("会话已结束，无法接入");
+    const t = now();
+    await env.DB.prepare("UPDATE cs_conversations SET status='serving',agent=?1,updated=?2 WHERE id=?3").bind(agent, t, cid).run();
+    await env.DB.prepare("INSERT INTO cs_messages (id,conv_id,role,content,intent,source,created) VALUES (?1,?2,'agent',?3,'','human',?4)")
+      .bind(uid(), cid, `${agent}已接入会话，接下来由我为您服务，请稍候～`, t + 1).run();
+    return json({ ok: true, agent });
+  }
+  // 坐席人工回复
+  if (path === "agent/reply" && method === "POST") {
+    const cid = String(body.conv || "");
+    const text = String(body.text || "").trim().slice(0, 2000);
+    const agent = String(body.agent || "客服专员").trim().slice(0, 40) || "客服专员";
+    if (!cid || !text) return bad("缺少 conv 或 text");
+    const c = await env.DB.prepare("SELECT * FROM cs_conversations WHERE id=?1").bind(cid).first();
+    if (!c) return bad("会话不存在", 404);
+    if (c.status !== "serving") return bad("会话未处于人工服务中");
+    const t = now();
+    await env.DB.prepare("INSERT INTO cs_messages (id,conv_id,role,content,intent,source,created) VALUES (?1,?2,'agent',?3,'','human',?4)")
+      .bind(uid(), cid, text, t).run();
+    await env.DB.prepare("UPDATE cs_conversations SET agent=?1,updated=?2 WHERE id=?3").bind(agent || c.agent, t + 1, cid).run();
+    return json({ ok: true });
+  }
+  // 结束会话
+  if (path === "agent/close" && method === "POST" || path === "admin/close" && method === "POST") {
+    const cid = String(body.conv || "");
+    const c = await env.DB.prepare("SELECT * FROM cs_conversations WHERE id=?1").bind(cid).first();
+    if (!c) return bad("会话不存在", 404);
+    const t = now();
+    await env.DB.prepare("UPDATE cs_conversations SET status='closed',updated=?1 WHERE id=?2").bind(t, cid).run();
+    await env.DB.prepare("INSERT INTO cs_messages (id,conv_id,role,content,intent,source,created) VALUES (?1,?2,'system','会话已结束，感谢您的咨询。','','close',?3)")
+      .bind(uid(), cid, t + 1).run();
+    return json({ ok: true });
+  }
+
   /* ---------- 核心：多轮对话 ---------- */
   if (path === "chat" && method === "POST") {
     const cid = String(body.conv || "");
@@ -92,6 +153,13 @@ export async function onRequest(context) {
     if (turns === 0 && (!conv.title || conv.title === "新咨询")) {
       const autoTitle = text.replace(/\s+/g, " ").slice(0, 24) + (text.length > 24 ? "…" : "");
       await env.DB.prepare("UPDATE cs_conversations SET title=?1 WHERE id=?2").bind(autoTitle, cid).run();
+    }
+
+    // 人工已介入的会话不再走 AI，消息直接转交坐席，避免机器人与人工打架
+    if (conv.status === "serving" || conv.status === "transferred") {
+      await env.DB.prepare("UPDATE cs_conversations SET intent=?1,updated=?2 WHERE id=?3").bind(intent.intent, t + 1, cid).run();
+      const mode = conv.status === "serving" ? "人工客服已收到您的消息，会尽快回复～" : "您的问题已转交人工客服，专员接入后会为您处理～";
+      return json({ ok: true, reply: mode, intent: intent.intent, intentLabel: intent.label, source: "queue", faqId: "", transferred: true, humanMode: true });
     }
 
     let reply, source;
@@ -138,16 +206,20 @@ export async function onRequest(context) {
 
   /* ---------- 管理端：统计 ---------- */
   if (path === "admin/stats" && method === "GET") {
-    const conv = await env.DB.prepare("SELECT COUNT(*) AS total, SUM(CASE WHEN status='transferred' THEN 1 ELSE 0 END) AS transferred FROM cs_conversations").first();
+    const conv = await env.DB.prepare("SELECT COUNT(*) AS total, SUM(CASE WHEN status='transferred' THEN 1 ELSE 0 END) AS transferred, SUM(CASE WHEN status='serving' THEN 1 ELSE 0 END) AS serving, SUM(CASE WHEN status='closed' THEN 1 ELSE 0 END) AS closed FROM cs_conversations").first();
     const msg = await env.DB.prepare("SELECT COUNT(*) AS total FROM cs_messages").first();
     const rating = await env.DB.prepare("SELECT AVG(score) AS avg, COUNT(*) AS cnt FROM cs_ratings").first();
     const dist = await env.DB.prepare("SELECT score, COUNT(*) AS n FROM cs_ratings GROUP BY score ORDER BY score").all();
     const intents = await env.DB.prepare("SELECT intent, COUNT(*) AS n FROM cs_messages WHERE role='user' AND intent!='' GROUP BY intent ORDER BY n DESC").all();
     const daily = await env.DB.prepare("SELECT date(created/1000,'unixepoch','localtime') AS d, COUNT(*) AS n FROM cs_conversations GROUP BY d ORDER BY d DESC LIMIT 14").all();
+    const humanMsgs = await env.DB.prepare("SELECT COUNT(*) AS n FROM cs_messages WHERE source='human'").first();
     return json({
       ok: true,
       totalConversations: conv.total || 0,
       transferred: conv.transferred || 0,
+      serving: conv.serving || 0,
+      closed: conv.closed || 0,
+      humanMessages: humanMsgs.n || 0,
       totalMessages: msg.total || 0,
       avgRating: Number((rating.avg || 0).toFixed(2)),
       ratingCount: rating.cnt || 0,

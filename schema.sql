@@ -6,8 +6,9 @@ CREATE TABLE IF NOT EXISTS cs_conversations (
   id TEXT PRIMARY KEY,
   visitor TEXT NOT NULL,              -- 访客标识（前端生成的匿名 ID）
   title TEXT DEFAULT '',              -- 会话标题（首条用户消息截取）
-  status TEXT DEFAULT 'open',         -- open | transferred | closed
+  status TEXT DEFAULT 'open',         -- open | transferred | serving | closed
   intent TEXT DEFAULT 'other',        -- 最近识别的意图
+  agent TEXT DEFAULT '',              -- 接入的人工坐席标识
   created INTEGER NOT NULL,
   updated INTEGER NOT NULL
 );
